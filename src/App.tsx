@@ -298,7 +298,7 @@ async function scoreUrl(raw: string) {
 /* ----------  external check ---------- */
 async function realExternalLookup(url: string) {
   try {
-    const res = await fetch("http://localhost:5000/api/scan", {
+    const res = await fetch("https://safelink-backend.netlify.app/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url }),
