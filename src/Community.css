@@ -19,7 +19,8 @@
   gap: 8px;
   max-width: 500px;       /* Same width as card */
   margin: 16px auto 0;  
-  padding-top: 20px;   /* Small gap below card, horizontally centered */
+  padding-top: 20px; 
+  margin-bottom: 40px;  /* Small gap below card, horizontally centered */
 }
 
 .search-bar input {
@@ -30,15 +31,24 @@
 }
 
 .search-bar button {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: none;
-  background-color: #10b981;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: white;
+  border: none;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-left: auto;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
-
+.back-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 102, 204, 0.3);
+}
 
 
 
@@ -194,4 +204,38 @@
   border-top: 1px solid var(--neutral-200);
   color: var(--neutral-600);
   font-size: 0.9rem;
+}
+
+
+
+
+
+
+
+
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.back-btn {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  border: none;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.back-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 102, 204, 0.3);
 }

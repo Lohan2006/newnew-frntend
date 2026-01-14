@@ -4,7 +4,8 @@ import './App.css';
 import { ref, set, get, push, onValue } from "firebase/database";
 import { db } from "./firebase";
 import { Routes, Route, useNavigate } from "react-router-dom";
-import Community from "./Community";
+import Community from './Community';
+
 
 
 /*
@@ -389,13 +390,16 @@ const safeKey = (url: string) => {
 
 
 // Save scan result to Firebase (history)
-const saveScanToFirebase = async (scanResult: ScanResult) => {
-  try {
-    // Push to 'history'
-    const newRef = push(ref(db, 'history'));
-    await set(newRef, scanResult);
 
-    // Also create a 'link' entry for likes, dislikes, comments
+
+export const saveScanToFirebase = async (scanResult: ScanResult) => {
+  try {
+    // Generate a unique ID in 'history'
+    const newRef = push(ref(db, 'history'));
+    const scanWithId = { ...scanResult, id: newRef.key }; // ensure scan has id
+    await set(newRef, scanWithId);
+
+    // Create a separate 'links' entry for reactions/comments
     const key = safeKey(scanResult.url);
     await set(ref(db, `links/${key}`), {
       likes: scanResult.likes ?? 0,
@@ -403,6 +407,8 @@ const saveScanToFirebase = async (scanResult: ScanResult) => {
       userReaction: scanResult.userReaction ?? null,
       comments: scanResult.comments ?? []
     });
+
+    console.log("Scan saved:", scanWithId);
 
   } catch (err) {
     console.error("Firebase write error:", err);
@@ -1176,7 +1182,8 @@ const clearHistory = async () => {
     </div>
           }
     />
-    <Route path="/community" element={<Community />} />
-  </Routes>
+
+  <Route path="/community" element={<Community />} />
+</Routes>
   );
 }

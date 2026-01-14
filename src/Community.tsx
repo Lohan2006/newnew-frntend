@@ -3,6 +3,7 @@ import './Community.css';
 import './App.css';
 import { db } from './firebase';
 import { ref, get, onValue, set } from "firebase/database";
+import { useNavigate } from 'react-router-dom';
 
 interface Comment {
   id: string;
@@ -28,23 +29,50 @@ interface ScanResult {
 }
 
 // Helper to sort by newest first
+// Sort scans: High Risk (red) first, then Be Careful (yellow), then Safe (green)
+// Within each tier, sort by likes descending, then newest first
 const sortScans = (a: ScanResult, b: ScanResult) => {
+  // Define tier priority (higher number = more risky)
+  const tierPriority: Record<string, number> = {
+    'High Risk': 3,   // red
+    'Be Careful': 2,  // yellow
+    'Safe': 1         // green
+  };
+
+  const tierDiff = (tierPriority[b.tier] || 0) - (tierPriority[a.tier] || 0);
+  if (tierDiff !== 0) return tierDiff;
+
+  // Same tier → higher dislikes first
+  const dislikesDiff = (b.dislikes ?? 0) - (a.dislikes ?? 0);
+  if (dislikesDiff !== 0) return dislikesDiff;
+
+  // Same dislikes → higher likes first
+  const likesDiff = (b.likes ?? 0) - (a.likes ?? 0);
+  if (likesDiff !== 0) return likesDiff;
+
+  // Same likes → newest first
   return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
 };
 
+
+
+// Firebase key safe
+const safeKey = (url: string) => url.replace(/[.#$/\[\]]/g, '_');
+
 // Add a comment in Firebase
-const addComment = async (id: string, text: string) => {
+const addComment = async (url: string, text: string) => {
+  const key = safeKey(url);
   const comment: Comment = {
     id: Date.now().toString(),
     text,
     timestamp: new Date().toLocaleString()
   };
 
-  const snapshot = await get(ref(db, `history/${id}/comments`));
+  const snapshot = await get(ref(db, `history/${key}/comments`));
   const existing = snapshot.exists() ? Object.values(snapshot.val()) as Comment[] : [];
   const updated = [...existing, comment];
 
-  await set(ref(db, `history/${id}/comments`), updated);
+  await set(ref(db, `history/${key}/comments`), updated);
   return updated;
 };
 
@@ -52,45 +80,38 @@ export default function Community() {
   const [history, setHistory] = useState<ScanResult[]>([]);
   const [search, setSearch] = useState('');
 
+  const navigate = useNavigate();
+
+
   // Load history from Firebase
-  useEffect(() => {
-    const historyRef = ref(db, 'history');
+useEffect(() => {
+  const historyRef = ref(db, 'history');
 
-    const loadScans = async () => {
-      const snapshot = await get(historyRef);
-      if (!snapshot.exists()) {
-        setHistory([]);
-        return;
-      }
+  const loadScans = async () => {
+    const snapshot = await get(historyRef);
+    if (!snapshot.exists()) {
+      setHistory([]);
+      return;
+    }
+    const data = Object.values(snapshot.val()) as ScanResult[];
+    data.sort(sortScans); // <- new enhanced sort
+    setHistory(data.slice(0, 20));
+  }; // <-- MISSING SEMICOLON / closing brace
 
-      // Map Firebase keys as IDs
-      const data = Object.entries(snapshot.val() || {}).map(([key, value]: any) => ({
-        id: key,
-        ...value
-      })) as ScanResult[];
+  loadScans();
 
-      data.sort(sortScans);
-      setHistory(data.slice(0, 20));
-    };
+  // Real-time updates
+  onValue(historyRef, snapshot => {
+    if (!snapshot.exists()) {
+      setHistory([]);
+      return;
+    }
+    const data = Object.values(snapshot.val()) as ScanResult[];
+    data.sort(sortScans);
+    setHistory(data.slice(0, 20));
+  });
+}, []);
 
-    loadScans();
-
-    // Real-time updates
-    onValue(historyRef, snapshot => {
-      if (!snapshot.exists()) {
-        setHistory([]);
-        return;
-      }
-
-      const data = Object.entries(snapshot.val() || {}).map(([key, value]: any) => ({
-        id: key,
-        ...value
-      })) as ScanResult[];
-
-      data.sort(sortScans);
-      setHistory(data.slice(0, 20));
-    });
-  }, []);
 
   // Filter based on search
   const filteredHistory = history.filter(h =>
@@ -99,50 +120,46 @@ export default function Community() {
 
   // Like a scan
   const handleLike = async (scan: ScanResult) => {
-    try {
-      const newReaction = scan.userReaction === 'like' ? null : 'like';
-      const updatedLikes = newReaction === 'like' ? (scan.likes ?? 0) + 1 : (scan.likes ?? 1) - 1;
-      const updatedDislikes = newReaction === 'like' && scan.userReaction === 'dislike'
-        ? (scan.dislikes ?? 1) - 1 : scan.dislikes ?? 0;
+    const newReaction = scan.userReaction === 'like' ? null : 'like';
+    const updatedLikes = newReaction === 'like' ? (scan.likes ?? 0) + 1 : (scan.likes ?? 1) - 1;
+    const updatedDislikes = newReaction === 'like' && scan.userReaction === 'dislike'
+      ? (scan.dislikes ?? 1) - 1 : scan.dislikes ?? 0;
 
-      await set(ref(db, `history/${scan.id}/likes`), updatedLikes);
-      await set(ref(db, `history/${scan.id}/dislikes`), updatedDislikes);
-      await set(ref(db, `history/${scan.id}/userReaction`), newReaction);
+    // Update Firebase
+    await set(ref(db, `history/${scan.id}/likes`), updatedLikes);
+    await set(ref(db, `history/${scan.id}/dislikes`), updatedDislikes);
+    await set(ref(db, `history/${scan.id}/userReaction`), newReaction);
 
-      setHistory(prev =>
-        prev.map(h =>
-          h.id === scan.id
-            ? { ...h, likes: updatedLikes, dislikes: updatedDislikes, userReaction: newReaction }
-            : h
-        )
-      );
-    } catch (err) {
-      console.error('Like error:', err);
-    }
+    // Update state
+    setHistory(prev =>
+      prev.map(h =>
+        h.id === scan.id
+          ? { ...h, likes: updatedLikes, dislikes: updatedDislikes, userReaction: newReaction }
+          : h
+      )
+    );
   };
 
   // Dislike a scan
   const handleDislike = async (scan: ScanResult) => {
-    try {
-      const newReaction = scan.userReaction === 'dislike' ? null : 'dislike';
-      const updatedDislikes = newReaction === 'dislike' ? (scan.dislikes ?? 0) + 1 : (scan.dislikes ?? 1) - 1;
-      const updatedLikes = newReaction === 'dislike' && scan.userReaction === 'like'
-        ? (scan.likes ?? 1) - 1 : scan.likes ?? 0;
+    const newReaction = scan.userReaction === 'dislike' ? null : 'dislike';
+    const updatedDislikes = newReaction === 'dislike' ? (scan.dislikes ?? 0) + 1 : (scan.dislikes ?? 1) - 1;
+    const updatedLikes = newReaction === 'dislike' && scan.userReaction === 'like'
+      ? (scan.likes ?? 1) - 1 : scan.likes ?? 0;
 
-      await set(ref(db, `history/${scan.id}/dislikes`), updatedDislikes);
-      await set(ref(db, `history/${scan.id}/likes`), updatedLikes);
-      await set(ref(db, `history/${scan.id}/userReaction`), newReaction);
+    // Update Firebase
+    await set(ref(db, `history/${scan.id}/dislikes`), updatedDislikes);
+    await set(ref(db, `history/${scan.id}/likes`), updatedLikes);
+    await set(ref(db, `history/${scan.id}/userReaction`), newReaction);
 
-      setHistory(prev =>
-        prev.map(h =>
-          h.id === scan.id
-            ? { ...h, likes: updatedLikes, dislikes: updatedDislikes, userReaction: newReaction }
-            : h
-        )
-      );
-    } catch (err) {
-      console.error('Dislike error:', err);
-    }
+    // Update state
+    setHistory(prev =>
+      prev.map(h =>
+        h.id === scan.id
+          ? { ...h, likes: updatedLikes, dislikes: updatedDislikes, userReaction: newReaction }
+          : h
+      )
+    );
   };
 
   // Toggle comment input
@@ -157,7 +174,7 @@ export default function Community() {
   // Submit comment
   const submitComment = async (scan: ScanResult) => {
     if (!scan.newComment?.trim()) return;
-    const updatedComments = await addComment(scan.id, scan.newComment);
+    const updatedComments = await addComment(scan.url, scan.newComment);
 
     setHistory(prev =>
       prev.map(h =>
@@ -174,6 +191,13 @@ export default function Community() {
         <h1>Community Features</h1>
         <p>Community-driven reports, discussions, and trusted links will appear here.</p>
       </main>
+
+      <div className="top-bar">
+  <button className="back-btn" onClick={() => navigate('/')}>
+    ← Back
+  </button>
+</div>
+
 
       <div className="search-bar">
         <input
