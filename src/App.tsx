@@ -3,10 +3,6 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import { ref, set, get, push, onValue } from "firebase/database";
 import { db } from "./firebase";
-import { Routes, Route, useNavigate } from "react-router-dom";
-import Community from './Community';
-
-
 
 /*
   Safe Link — Rule-Based Scoring (0..10 safety)
@@ -25,7 +21,6 @@ interface Comment {
 }
 
 interface ScanResult {
-  
   id: string;
   url: string;
   safety: number;
@@ -303,15 +298,12 @@ async function realExternalLookup(url: string) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url }),
     });
-
     if (!res.ok) {
       console.error("External API error:", res.status);
       return null;
     }
-
     const data = await res.json();
     return data;
-
   } catch (e) {
     console.error("Fetch failed:", e);
     return null;
@@ -393,16 +385,13 @@ const safeKey = (url: string) => {
 
 
 // Save scan result to Firebase (history)
-
-
-export const saveScanToFirebase = async (scanResult: ScanResult) => {
+const saveScanToFirebase = async (scanResult: ScanResult) => {
   try {
-    // Generate a unique ID in 'history'
+    // Push to 'history'
     const newRef = push(ref(db, 'history'));
-    const scanWithId = { ...scanResult, id: newRef.key }; // ensure scan has id
-    await set(newRef, scanWithId);
+    await set(newRef, scanResult);
 
-    // Create a separate 'links' entry for reactions/comments
+    // Also create a 'link' entry for likes, dislikes, comments
     const key = safeKey(scanResult.url);
     await set(ref(db, `links/${key}`), {
       likes: scanResult.likes ?? 0,
@@ -410,8 +399,6 @@ export const saveScanToFirebase = async (scanResult: ScanResult) => {
       userReaction: scanResult.userReaction ?? null,
       comments: scanResult.comments ?? []
     });
-
-    console.log("Scan saved:", scanWithId);
 
   } catch (err) {
     console.error("Firebase write error:", err);
@@ -422,13 +409,13 @@ export const saveScanToFirebase = async (scanResult: ScanResult) => {
 
 /* ---------- React component ---------- */
 export default function App() {
-  const navigate = useNavigate();
+  const [view, setView] = useState<'scanner' | 'saved'>('scanner'); // 🆕 NEW: Tab state
   const [input, setInput] = useState('');
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [history, setHistory] = useState<ScanResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+  const [searchTerm, setSearchTerm] = useState(''); // 🆕 NEW: Search bar state
 
 
 
@@ -490,7 +477,7 @@ const runExternalCheck = async () => {
       prev
         .map(s => (s.id === scan.id ? updatedScan : s))
         .sort(sortScans)
-        .slice(0, 5)
+        .slice(0, 12)
     );
 
   } catch (e) {
@@ -540,7 +527,7 @@ useEffect(() => {
       );
 
       merged.sort(sortScans);
-      setHistory(merged.slice(0, 5));
+      setHistory(merged.slice(0, 12));
 
     } catch (err) {
       console.error("Firebase load error:", err);
@@ -576,7 +563,7 @@ onValue(historyRef, async snapshot => {
   });
 
   merged.sort(sortScans);
-  setHistory(merged.slice(0, 5));
+  setHistory(merged.slice(0, 12));
 });
 
 
@@ -618,7 +605,7 @@ const handleAnalyze = async (e?: React.FormEvent) => {
 
     // Add to recent history (keep max 12)
     setHistory(h => {
-      const updatedHistory = [scanResult, ...h].slice(0, 5);
+      const updatedHistory = [scanResult, ...h].slice(0, 12);
       return updatedHistory;
     });
 
@@ -639,32 +626,22 @@ const handleAnalyze = async (e?: React.FormEvent) => {
 };
 
 
-const clearHistory = async () => {
-  setHistory([]); // clear local state
-  try {
-    // Clear history
-    await set(ref(db, 'history'), {});
-    // Clear likes/dislikes and user reactions
-    await set(ref(db, 'links'), {});
-  } catch (err) {
-    console.error("Firebase clear error:", err);
-  }
-};
 
 
-
+  /* ---------- Filter logic for Saved Tab ---------- */
+  const filteredHistory = history.filter(h => {
+    if (!searchTerm) return true;
+    const lower = searchTerm.toLowerCase();
+    return h.url.toLowerCase().includes(lower) || h.id.toLowerCase().includes(lower);
+  });
 
 
 
 
 
   
-  /* ---------- UI (unchanged) ---------- */
+  /* ---------- UI (Main Render) ---------- */
   return (
-      <Routes>
-    <Route
-      path="/"
-      element={
     <div className="glass-app">
       <div className="bg-visual" style={{ backgroundImage: "url('/mnt/data/5ce9f39a-3ebd-4cd8-a632-de55debc40cc.png')" }} />
 
@@ -677,13 +654,34 @@ const clearHistory = async () => {
               <p className="subtitle">Fast, explainable link checks — stop scammers before they trick people</p>
             </div>
           </div>
-          <div className="version">Rule-based engine and Real-Time API Intergration</div>
+          
+{/* 🆕 NAVIGATION BUTTONS */}
+<div className="nav-buttons">
+  <button
+    onClick={() => setView('scanner')}
+    className={`nav-btn ${view === 'scanner' ? 'active' : ''}`}
+  >
+    Scanner
+  </button>
+
+  <button
+    onClick={() => setView('saved')}
+    className={`nav-btn ${view === 'saved' ? 'active' : ''}`}
+  >
+    Community Features
+  </button>
+</div>
+
         </header>
 
+        {/* ---------------- VIEW 1: SCANNER ---------------- */}
+        {view === 'scanner' && (
+        <>
         <section className="scanner">
           <form onSubmit={handleAnalyze} className="scanner-form" aria-label="URL scanner">
             <div className="input-wrap">
               <svg className="input-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M10 3a7 7 0 0 0 0 14 7 7 0 1 0 0-14zM21 21l-4.35-4.35" /></svg>
+              
               <input aria-label="URL or hostname" placeholder="example.com or https://example.com" value={input} onChange={(e) => setInput(e.target.value)} disabled={loading} />
               <button type="submit" className="scan-btn" disabled={loading} aria-disabled={loading}>{loading ? 'Analyzing…' : 'Analyze'}</button>
             </div>
@@ -825,31 +823,37 @@ const clearHistory = async () => {
           ) : (
             <div className="placeholder">Enter a link and press Analyze — we'll show a safety score (0–10) and clear reasons you can act on.</div>
           )}
-          
         </section>
+        </>
+        )}
 
 
-<section className="history-section">
-  
+{/* ---------------- VIEW 2: SAVED CHECKS ---------------- */}
+{view === 'saved' && (
+<section className="history-section" style={{ display: 'block', width: '100%' }}>
   <div className="history-head">
     <div>Recent checks</div>
-    <div><button className="clear-btn" onClick={clearHistory}>Clear</button></div>
   </div>
+
+  {/* SEARCH BAR FOR SAVED HISTORY */}
+<div className="history-search">
+  <input
+    type="text"
+    className="history-search-input"
+    placeholder="Search stored URLs..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+  />
+</div>
+
+
   <div className="history-list">
-  {history.length === 0 ? (
-    <div className="empty-history">No checks yet</div>
-
-
-
-
-
+  {filteredHistory.length === 0 ? (
+    <div className="empty-history">No matching checks found</div>
   ) : (
-    history.map((h) => (
+    filteredHistory.map((h) => (
       <div key={h.id} className="history-item">
         <div className="h-url">{h.url.replace(/^https?:\/\//, '')}</div>
-
-
-
 
         {/* Score + Reactions horizontally */}
         <div className="result-reactions">
@@ -857,9 +861,6 @@ const clearHistory = async () => {
           <div className="result-score-inline" style={{ backgroundColor: h.color }}>
             {h.safety}
           </div>
-
-
-
 
           {/* Like button */}
           <button
@@ -897,15 +898,6 @@ const clearHistory = async () => {
           </button>
 
 
-
-
-
-
-
-
-
-          
-
           {/* Dislike button */}
           <button
             className={`reaction-btn ${h.userReaction === 'dislike' ? 'disliked' : ''}`}
@@ -940,10 +932,6 @@ const clearHistory = async () => {
 </svg>
             {h.dislikes || 0}
           </button>
-
-
-
-
 
 
           {/* Comment button */}
@@ -987,14 +975,6 @@ const clearHistory = async () => {
 </div>
 
 
-
-
-
-
-
-
-
-
 {h.showCommentInput && (
   <div className="comment-box">
     {/* Existing comments */}
@@ -1002,8 +982,8 @@ const clearHistory = async () => {
       <div className="comments-list">
         {h.comments.map(c => (
           <div key={c.id} className="comment-item">
-            <span className="comment-text">{c.text}</span>
             <span className="comment-time">{c.timestamp}</span>
+            <span className="comment-text">{c.text}</span>
             {c.imagesBase64 && c.imagesBase64.length > 0 && (
               <div className="comment-images">
                 {c.imagesBase64.map((img, idx) => (
@@ -1015,9 +995,6 @@ const clearHistory = async () => {
         ))}
       </div>
     )}
-
-
-
 
 
   {/* Add new comment */}
@@ -1038,18 +1015,9 @@ const clearHistory = async () => {
         
       />
 
-
-
-
-
-
-
-
-
-
        {/* Image upload */}
        <label className="image-upload-btn">
-        Add Photo
+        Add Images
     <input
   type="file"
   accept="image/png, image/jpeg"
@@ -1104,8 +1072,6 @@ const clearHistory = async () => {
 </label>
 
 
-
-
 {h.newCommentImages && h.newCommentImages.length > 0 && (
       <div className="new-comment-preview">
         {h.newCommentImages.map((img, idx) => (
@@ -1156,12 +1122,6 @@ const clearHistory = async () => {
 )}
 
 
-
-
-
-
-
-
       </div>
       )
 
@@ -1169,24 +1129,19 @@ const clearHistory = async () => {
 </div>
 
 </section>
+)}
 
-
-    <button className="community-btn" onClick={() => navigate("/community")}>
-      Community Features
-    </button>
-
-
-
-
-        
 
         <footer className="app-foot">Safe Link © 2025 — Fast, clear, and reliable link safety scoring </footer>
       </main>
     </div>
-          }
-    />
-
-  <Route path="/community" element={<Community />} />
-</Routes>
   );
 }
+
+
+
+
+
+
+
+

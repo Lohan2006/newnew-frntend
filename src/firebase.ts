@@ -1,6 +1,6 @@
 // firebase.ts
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, get, set} from "firebase/database";
+import { getDatabase, ref, get, set, update } from "firebase/database";
 
 // 🔐 Your Firebase config (you already have this)
 const firebaseConfig = {

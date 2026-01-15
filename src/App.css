@@ -1223,7 +1223,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
 }
 
 .comment-item .comment-text {
@@ -1243,12 +1243,12 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-left: 20px; /* aligns with input padding */
+  margin-left: 15px; /* aligns with input padding */
 }
 
 .comment-images img {
-  width: 50px;
-  height: 50px;
+  width: 200px;
+  height: 150px;
   object-fit: cover;
   border-radius: 6px;
   border: 1px solid #dcdfe6;
@@ -1263,97 +1263,105 @@ body {
   position: relative;
 }
 
-/* ---------- New Comment Input Row ---------- */
+/* ---------- Modern Glass Comment Input Row ---------- */
 .comment-input-row {
   display: flex;
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #dcdfe6;
-  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.65); /* glassy white */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(229, 231, 235, 0.6); /* soft border */
+  padding: 6px 14px;
   border-radius: 100px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05); /* subtle depth */
   gap: 10px;
-  min-height: 48px;
-  margin-top: 8px;
+  min-height: 50px;
+  margin-top: 10px;
+  transition: all 0.2s ease;
 }
 
-/* Text input (flexible center space) */
+/* ---------- Text Input ---------- */
 .comment-input-row input[type="text"] {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 8px;
+  padding: 10px 12px;
   font-size: 14px;
   outline: none;
-  color: #303133;
+  color: #111827; /* modern dark text */
+  transition: all 0.2s ease;
 }
 
 .comment-input-row input::placeholder {
-  color: #909399;
+  color: #9ca3af; /* lighter gray placeholder */
+  font-weight: 400;
 }
 
-/* Add Photo Button */
+
+/* ---------- Image Upload Button ---------- */
 .image-upload-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 15px;
+  padding: 0 16px;
   height: 36px;
-  background-color: #f4f4f5;
-  color: #606266;
+  background-color: rgba(243, 244, 246, 0.8); /* glassy light gray */
+  color: #6b7280;
   font-weight: 600;
   font-size: 13px;
   border-radius: 20px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .image-upload-btn:hover {
-  background-color: #e9e9eb;
+  background-color: rgba(229, 231, 235, 0.85);
 }
 
 .image-upload-btn input[type="file"] {
   display: none;
 }
 
-/* Send Button (Icon Only) */
+/* ---------- Send Button (Icon Only) ---------- */
 .comment-input-row button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  background-color: #1976d2;
+  width: 40px;
+  height: 40px;
+  background-color: #2563eb; /* modern primary blue */
   border: none;
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 0.2s, background-color 0.2s;
+  transition: transform 0.2s ease, background-color 0.2s ease;
   flex-shrink: 0;
-  font-size: 0; /* hide text content */
+  font-size: 0; /* hide text */
 }
 
 .comment-input-row button::before {
-  content: "➤";
+  content: "➤"; /* arrow icon */
   font-size: 18px;
   color: #ffffff;
 }
 
 .comment-input-row button:hover {
-  background-color: #1565c0;
-  transform: scale(1.05);
+  background-color: #1d4ed8;
+  transform: scale(1.1);
 }
 
+
 /* Image previews */
-.comment-images img,
+
 .new-comment-preview img {
   width: 50px;
   height: 50px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 13px;
   border: 1px solid #dcdfe6;
   cursor: pointer;
   transition: transform 0.3s, z-index 0.3s;
+  margin-top: 4px;
 }
 
 /* Zoomed image */
@@ -1392,4 +1400,110 @@ body {
 
 .community-btn:hover {
   background: #1d4ed8;
+}
+
+
+
+
+
+
+
+
+/* =========================
+   NAVIGATION BUTTONS
+========================= */
+.nav-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+/* Base nav button */
+.nav-btn {
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Hover */
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* Active / selected */
+.nav-btn.active {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.3);
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+
+
+
+
+
+
+
+
+
+
+/* =========================
+   LIGHT MODERN SEARCH BAR
+========================= */
+.history-search {
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.history-search-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  font-size: 15px;
+  color: #111827;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Placeholder */
+.history-search-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Focus */
+.history-search-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+
+
+
+
+
+/* Smaller screens (max-width: 500px) */
+@media (max-width: 500px) {
+  .comment-input-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .comment-input-row input {
+    width: 100%;
+  }
+
+  .nav-buttons {
+    flex-direction: column;
+  }
 }
